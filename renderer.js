@@ -95,6 +95,10 @@ document.getElementById('compare-btn').addEventListener('click', async () => {
  * Display the comparison results in the UI
  * @param {Object} results - The comparison results
  */
+/**
+ * Display the comparison results in the UI with improved formatting
+ * @param {Object} results - The comparison results
+ */
 function displayResults(results) {
   const summaryEl = document.getElementById('summary');
   const differencesEl = document.getElementById('differences');
@@ -122,7 +126,7 @@ function displayResults(results) {
   // Create header row
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  const headers = ['Sheet', 'Key Value', 'Column', 'Cell (File 1)', 'Cell (File 2)', 'File 1 Value', 'File 2 Value'];
+  const headers = ['Sheet', 'Key Value', 'Column', 'File 1 Content', 'File 2 Content'];
   
   headers.forEach((headerText, index) => {
     const header = document.createElement('th');
@@ -190,36 +194,37 @@ function displayResults(results) {
     const columnCell = document.createElement('td');
     columnCell.textContent = diff.column;
     
-    const cell1Cell = document.createElement('td');
-    cell1Cell.textContent = diff.cell1;
+    // Create combined cells for File 1 and File 2
+    const file1Cell = document.createElement('td');
+    const file2Cell = document.createElement('td');
     
-    const cell2Cell = document.createElement('td');
-    cell2Cell.textContent = diff.cell2;
+    // Format: Cell Reference: Value
+    // For sheets that exist in one file but not the other
+    if (diff.cell1 === 'N/A' || diff.cell2 === 'N/A') {
+      file1Cell.textContent = diff.value1;
+      file2Cell.textContent = diff.value2;
+    } else {
+      file1Cell.innerHTML = `<div class="cell-reference">${diff.cell1}</div><div class="cell-value">${diff.value1}</div>`;
+      file2Cell.innerHTML = `<div class="cell-reference">${diff.cell2}</div><div class="cell-value">${diff.value2}</div>`;
+    }
     
-    const value1Cell = document.createElement('td');
-    value1Cell.textContent = diff.value1;
-    value1Cell.className = 'resizable-cell';
-    
-    const value2Cell = document.createElement('td');
-    value2Cell.textContent = diff.value2;
-    value2Cell.className = 'resizable-cell';
+    file1Cell.className = 'resizable-cell';
+    file2Cell.className = 'resizable-cell';
     
     // Add double-click event to expand cell height
-    value1Cell.addEventListener('dblclick', function() {
+    file1Cell.addEventListener('dblclick', function() {
       this.classList.toggle('expanded');
     });
     
-    value2Cell.addEventListener('dblclick', function() {
+    file2Cell.addEventListener('dblclick', function() {
       this.classList.toggle('expanded');
     });
     
     row.appendChild(sheetCell);
     row.appendChild(keyValueCell);
     row.appendChild(columnCell);
-    row.appendChild(cell1Cell);
-    row.appendChild(cell2Cell);
-    row.appendChild(value1Cell);
-    row.appendChild(value2Cell);
+    row.appendChild(file1Cell);
+    row.appendChild(file2Cell);
     
     tbody.appendChild(row);
   });
