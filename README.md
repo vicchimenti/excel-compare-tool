@@ -30,7 +30,7 @@ A desktop application that allows users to quickly and easily compare two Excel 
    ```bash
    git clone https://github.com/vicchimenti/excel-compare-tool.git
    cd excel-compare-tool
-   ```
+   ```plaintext
 
 2. Install dependencies:
 
@@ -79,8 +79,7 @@ npx excel-compare-tool path/to/file1.xlsx path/to/file2.xlsx
 
 ### Project Structure
 
-```
-excel-compare-tool/
+```excel-compare-tool/
 ├── main.js                 # Electron main process
 ├── preload.js              # Preload script for secure IPC
 ├── index.js                # Excel comparison logic
