@@ -5,6 +5,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld(
   'api', {
     selectFiles: () => ipcRenderer.invoke('select-files'),
-    compareFiles: (file1Path, file2Path) => ipcRenderer.invoke('compare-files', file1Path, file2Path)
+    getColumns: (filePath) => ipcRenderer.invoke('get-columns', filePath),
+    compareFiles: (file1Path, file2Path, options) => 
+      ipcRenderer.invoke('compare-files', file1Path, file2Path, options)
   }
 );
