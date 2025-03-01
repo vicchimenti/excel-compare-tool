@@ -1,279 +1,150 @@
-#!/usr/bin/env node
-
-const fs = require('fs');
-const path = require('path');
-const XLSX = require('xlsx');
+// This file serves as an adapter between the original CLI tool and our Electron UI
 const { program } = require('commander');
-const chalk = require('chalk');
+const path = require('path');
+const fs = require('fs');
+const XLSX = require('xlsx');
 
-program
-  .name('excel-compare')
-  .description('Compare two Excel files and identify differences')
-  .version('1.0.0')
-  .argument('<oldFile>', 'Path to the old Excel file')
-  .argument('<newFile>', 'Path to the new Excel file')
-  .option('-s, --sheet <name>', 'Specific sheet name to compare (defaults to first sheet)')
-  .option('-i, --id-column <name>', 'Column name to use as identifier (defaults to "ID")')
-  .option('-o, --output <file>', 'Save output to a file')
-  .option('--json', 'Output results as JSON')
-  .parse(process.argv);
+// Function to compare Excel files
+async function compareExcel(file1Path, file2Path) {
+  // Validate inputs
+  if (!file1Path || !file2Path) {
+    throw new Error('Two Excel files must be provided for comparison');
+  }
 
-const options = program.opts();
-const [oldFilePath, newFilePath] = program.args;
+  if (!fs.existsSync(file1Path)) {
+    throw new Error(`File not found: ${file1Path}`);
+  }
 
-// Save console.log output if output file is specified
-if (options.output) {
-  const logFile = fs.createWriteStream(options.output);
-  const originalConsoleLog = console.log;
-  console.log = function() {
-    originalConsoleLog.apply(console, arguments);
-    const text = Array.from(arguments).join(' ');
-    logFile.write(text + '\n');
-  };
-}
+  if (!fs.existsSync(file2Path)) {
+    throw new Error(`File not found: ${file2Path}`);
+  }
 
-// Main function to compare Excel files
-async function compareExcelFiles(oldFilePath, newFilePath, options) {
+  console.log(`Comparing: ${file1Path} and ${file2Path}`);
+
   try {
-    // Read the Excel files
-    const oldFile = fs.readFileSync(oldFilePath);
-    const newFile = fs.readFileSync(newFilePath);
+    // Read workbooks
+    const workbook1 = XLSX.readFile(file1Path);
+    const workbook2 = XLSX.readFile(file2Path);
 
-    // Import SheetJS
-    const oldWorkbook = XLSX.read(oldFile, {
-      cellDates: true
-    });
+    // Track differences
+    const differences = [];
 
-    const newWorkbook = XLSX.read(newFile, {
-      cellDates: true
-    });
+    // Get sheets from both workbooks
+    const sheets1 = workbook1.SheetNames;
+    const sheets2 = workbook2.SheetNames;
 
-    console.log(chalk.blue("Old workbook sheets:"), oldWorkbook.SheetNames);
-    console.log(chalk.blue("New workbook sheets:"), newWorkbook.SheetNames);
-
-    // Determine which sheet to use
-    const sheetName = options.sheet || oldWorkbook.SheetNames[0];
-    if (!oldWorkbook.SheetNames.includes(sheetName)) {
-      console.error(chalk.red(`Sheet "${sheetName}" not found in old file`));
-      return;
+    // Compare sheet names
+    const commonSheets = sheets1.filter(sheet => sheets2.includes(sheet));
+    
+    // For each common sheet, compare cell by cell
+    for (const sheetName of commonSheets) {
+      const sheet1 = workbook1.Sheets[sheetName];
+      const sheet2 = workbook2.Sheets[sheetName];
+      
+      // Convert sheets to JSON for easier handling
+      const data1 = XLSX.utils.sheet_to_json(sheet1, { header: 1, defval: null });
+      const data2 = XLSX.utils.sheet_to_json(sheet2, { header: 1, defval: null });
+      
+      // Get max dimensions to ensure we check all cells
+      const maxRows = Math.max(data1.length, data2.length);
+      const maxCols = Math.max(
+        ...data1.map(row => row ? row.length : 0),
+        ...data2.map(row => row ? row.length : 0)
+      );
+      
+      // Compare each cell
+      for (let row = 0; row < maxRows; row++) {
+        for (let col = 0; col < maxCols; col++) {
+          const value1 = data1[row] && col < data1[row].length ? data1[row][col] : null;
+          const value2 = data2[row] && col < data2[row].length ? data2[row][col] : null;
+          
+          // Check if values are different (accounting for null/undefined)
+          if (value1 !== value2 && !(value1 === null && value2 === undefined) && !(value1 === undefined && value2 === null)) {
+            // Convert column index to Excel column letter
+            const colLetter = XLSX.utils.encode_col(col);
+            const cellRef = `${colLetter}${row + 1}`;
+            
+            differences.push({
+              sheet: sheetName,
+              cell: cellRef,
+              value1: value1,
+              value2: value2
+            });
+          }
+        }
+      }
     }
-    if (!newWorkbook.SheetNames.includes(sheetName)) {
-      console.error(chalk.red(`Sheet "${sheetName}" not found in new file`));
-      return;
+    
+    // Check for sheets that exist in one file but not the other
+    const uniqueSheets1 = sheets1.filter(sheet => !sheets2.includes(sheet));
+    const uniqueSheets2 = sheets2.filter(sheet => !sheets1.includes(sheet));
+    
+    for (const sheet of uniqueSheets1) {
+      differences.push({
+        sheet: sheet,
+        cell: 'N/A',
+        value1: 'Sheet exists',
+        value2: 'Sheet missing'
+      });
     }
-
-    // Get worksheets
-    const oldSheet = oldWorkbook.Sheets[sheetName];
-    const newSheet = newWorkbook.Sheets[sheetName];
-
-    // Convert to array of arrays for easier processing
-    const oldData = XLSX.utils.sheet_to_json(oldSheet, { header: 1 });
-    const newData = XLSX.utils.sheet_to_json(newSheet, { header: 1 });
-
-    console.log(chalk.blue(`Old sheet "${sheetName}" has ${oldData.length} rows`));
-    console.log(chalk.blue(`New sheet "${sheetName}" has ${newData.length} rows`));
-
-    // Get headers
-    const oldHeaders = oldData[0];
-    const newHeaders = newData[0];
-
-    // Find indexes of key identifying fields
-    const findColumnIndex = (headers, name) => {
-      return headers.findIndex(h => h && h.toString().includes(name));
+    
+    for (const sheet of uniqueSheets2) {
+      differences.push({
+        sheet: sheet,
+        cell: 'N/A',
+        value1: 'Sheet missing',
+        value2: 'Sheet exists'
+      });
+    }
+    
+    return {
+      differences,
+      file1: path.basename(file1Path),
+      file2: path.basename(file2Path)
     };
-
-    // Find the ID column (use the one specified in options or look for "ID")
-    const idColumnName = options.idColumn || "ID";
-    const oldIdCol = findColumnIndex(oldHeaders, idColumnName);
-    const newIdCol = findColumnIndex(newHeaders, idColumnName);
-
-    if (oldIdCol === -1 || newIdCol === -1) {
-      console.error(chalk.red(`Could not find column "${idColumnName}" in one or both files.`));
-      console.log(chalk.yellow("Available columns in old file:"), oldHeaders);
-      console.log(chalk.yellow("Available columns in new file:"), newHeaders);
-      return;
-    }
-
-    // Try to find other useful columns
-    const oldNameCol = findColumnIndex(oldHeaders, "Name");
-    const newNameCol = findColumnIndex(newHeaders, "Name");
-    const oldTitleCol = findColumnIndex(oldHeaders, "Title");
-    const newTitleCol = findColumnIndex(newHeaders, "Title");
-
-    console.log(chalk.blue(`Old file column indexes - ID: ${oldIdCol}, Name: ${oldNameCol}, Title: ${oldTitleCol}`));
-    console.log(chalk.blue(`New file column indexes - ID: ${newIdCol}, Name: ${newNameCol}, Title: ${newTitleCol}`));
-
-    // Create sets of IDs for quick lookup
-    const oldIds = new Set(oldData.slice(1).map(row => String(row[oldIdCol])));
-    const newIds = new Set(newData.slice(1).map(row => String(row[newIdCol])));
-
-    // Find rows present only in old file (removed)
-    const removedIds = [...oldIds].filter(id => !newIds.has(id));
-    console.log(chalk.red(`Found ${removedIds.length} rows present only in old file (removed)`));
-
-    // Find rows present only in new file (added)
-    const addedIds = [...newIds].filter(id => !oldIds.has(id));
-    console.log(chalk.green(`Found ${addedIds.length} rows present only in new file (added)`));
-
-    // Find common IDs (potential modifications)
-    const commonIds = [...oldIds].filter(id => newIds.has(id));
-    console.log(chalk.blue(`Found ${commonIds.length} IDs present in both files (potential modifications)`));
-
-    // Function to create a map of rows by ID for quick lookup
-    function createRowMap(data, idCol) {
-      const map = new Map();
-      for (let i = 1; i < data.length; i++) {
-        const id = String(data[i][idCol]);
-        if (id) map.set(id, data[i]);
-      }
-      return map;
-    }
-
-    const oldRowsById = createRowMap(oldData, oldIdCol);
-    const newRowsById = createRowMap(newData, newIdCol);
-
-    // Function to compare two rows and identify differences
-    function findDifferences(oldRow, newRow, oldHeaders, newHeaders) {
-      const diffs = [];
-      const maxCols = Math.max(oldRow.length, newRow.length);
-
-      for (let i = 0; i < maxCols; i++) {
-        // Skip if the column doesn't exist in one of the files
-        if (i >= oldRow.length || i >= newRow.length) continue;
-
-        const oldVal = oldRow[i] === undefined || oldRow[i] === null ? "" : String(oldRow[i]);
-        const newVal = newRow[i] === undefined || newRow[i] === null ? "" : String(newRow[i]);
-
-        if (oldVal !== newVal) {
-          diffs.push({
-            columnIndex: i,
-            columnName: i < oldHeaders.length ? oldHeaders[i] : `Column ${i}`,
-            oldValue: oldVal,
-            newValue: newVal
-          });
-        }
-      }
-
-      return diffs;
-    }
-
-    // Check for modifications in common rows
-    const modifiedRows = [];
-
-    for (const id of commonIds) {
-      const oldRow = oldRowsById.get(id);
-      const newRow = newRowsById.get(id);
-
-      if (oldRow && newRow) {
-        const differences = findDifferences(oldRow, newRow, oldHeaders, newHeaders);
-
-        if (differences.length > 0) {
-          modifiedRows.push({
-            id,
-            name: newRow[newNameCol] || oldRow[oldNameCol],
-            title: newRow[newTitleCol] || oldRow[oldTitleCol],
-            differences
-          });
-        }
-      }
-    }
-
-    console.log(chalk.yellow(`Found ${modifiedRows.length} modified rows`));
-
-    // Prepare results for potential JSON output
-    const results = {
-      addedRows: [],
-      removedRows: [],
-      modifiedRows: []
-    };
-
-    // Output detailed information about changes
-    // 1. Added rows
-    if (addedIds.length > 0) {
-      console.log(chalk.green("\nADDED ROWS:"));
-      for (const id of addedIds) {
-        const row = newRowsById.get(id);
-        if (row) {
-          const name = row[newNameCol] || "Unknown";
-          const title = row[newTitleCol] || "Unknown";
-          console.log(chalk.green(`ID: ${id}, Name: ${name}, Title: ${title}`));
-          
-          results.addedRows.push({ id, name, title });
-        }
-      }
-    }
-
-    // 2. Removed rows
-    if (removedIds.length > 0) {
-      console.log(chalk.red("\nREMOVED ROWS:"));
-      for (const id of removedIds) {
-        const row = oldRowsById.get(id);
-        if (row) {
-          const name = row[oldNameCol] || "Unknown";
-          const title = row[oldTitleCol] || "Unknown";
-          console.log(chalk.red(`ID: ${id}, Name: ${name}, Title: ${title}`));
-          
-          results.removedRows.push({ id, name, title });
-        }
-      }
-    }
-
-    // 3. Modified rows
-    if (modifiedRows.length > 0) {
-      console.log(chalk.yellow("\nMODIFIED ROWS:"));
-
-      for (const mod of modifiedRows) {
-        console.log(chalk.yellow(`\nID: ${mod.id}, Name: ${mod.name || 'Unknown'}`));
-        console.log(chalk.yellow(`Title: ${mod.title || 'Unknown'}`));
-        console.log(chalk.yellow(`Changes (${mod.differences.length}):`));
-
-        const modifiedRowData = {
-          id: mod.id,
-          name: mod.name,
-          title: mod.title,
-          changes: []
-        };
-
-        for (const diff of mod.differences) {
-          // Truncate long values for display
-          let oldVal = diff.oldValue;
-          let newVal = diff.newValue;
-
-          if (oldVal && oldVal.length > 100) oldVal = oldVal.substring(0, 97) + "...";
-          if (newVal && newVal.length > 100) newVal = newVal.substring(0, 97) + "...";
-
-          console.log(`  - ${diff.columnName}: ${chalk.red(`"${oldVal}"`)} → ${chalk.green(`"${newVal}"`)}`);
-          
-          modifiedRowData.changes.push({
-            field: diff.columnName,
-            oldValue: diff.oldValue,
-            newValue: diff.newValue
-          });
-        }
-        
-        results.modifiedRows.push(modifiedRowData);
-      }
-    }
-
-    // Summary of changes
-    console.log(chalk.blue("\n\nSUMMARY OF CHANGES:"));
-    console.log(chalk.blue(`- Total rows in old file: ${oldData.length - 1}`));
-    console.log(chalk.blue(`- Total rows in new file: ${newData.length - 1}`));
-    console.log(chalk.green(`- Added rows: ${addedIds.length}`));
-    console.log(chalk.red(`- Removed rows: ${removedIds.length}`));
-    console.log(chalk.yellow(`- Modified rows: ${modifiedRows.length}`));
-
-    // Output as JSON if requested
-    if (options.json) {
-      console.log("\nJSON OUTPUT:");
-      console.log(JSON.stringify(results, null, 2));
-    }
-
   } catch (error) {
-    console.error(chalk.red('Error processing files:'), error);
-    process.exit(1);
+    console.error('Error comparing Excel files:', error);
+    throw new Error(`Failed to compare Excel files: ${error.message}`);
   }
 }
 
-// Run the comparison
-compareExcelFiles(oldFilePath, newFilePath, options);
+// If this file is run directly from command line
+if (require.main === module) {
+  program
+    .arguments('<oldFile> <newFile>')
+    .description('Compare two Excel files')
+    .action(async (oldFile, newFile) => {
+      try {
+        const results = await compareExcel(oldFile, newFile);
+        
+        console.log('\nComparison Results:');
+        console.log(`Comparing ${results.file1} and ${results.file2}`);
+        
+        if (results.differences.length === 0) {
+          console.log('No differences found. Files are identical.');
+        } else {
+          console.log(`Found ${results.differences.length} differences:`);
+          
+          results.differences.forEach((diff, index) => {
+            console.log(`\nDifference #${index + 1}:`);
+            console.log(`Sheet: ${diff.sheet}`);
+            console.log(`Cell: ${diff.cell}`);
+            console.log(`File 1 value: ${diff.value1}`);
+            console.log(`File 2 value: ${diff.value2}`);
+          });
+        }
+      } catch (error) {
+        console.error('Error:', error.message);
+        process.exit(1);
+      }
+    })
+    .parse(process.argv);
+  
+  // Show help if no arguments provided
+  if (program.args.length === 0) {
+    program.help();
+  }
+} else {
+  // When imported as a module, export the compare function
+  module.exports = compareExcel;
+}
