@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="UTF-8">
+    <title>Excel Comparison Tool</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self';">
+    <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+    <div class="container">
+        <h1>Excel Comparison Tool</h1>
+        
+        <div class="file-container">
+        <p><strong>File 1:</strong> <span id="file1-path">No file selected</span></p>
+        <p><strong>File 2:</strong> <span id="file2-path">No file selected</span></p>
+        <button id="select-files-btn" class="btn">Select Excel Files</button>
+        <button id="compare-btn" class="btn" disabled>Compare Files</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+        Comparing files, please wait...
+        </div>
+        
+        <div id="results" class="results" style="display: none;">
+        <h2>Comparison Results</h2>
+        <p id="summary"></p>
+        <div id="differences"></div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+    </body>
+</html>
