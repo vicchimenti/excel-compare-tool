@@ -14,7 +14,26 @@
         <p><strong>File 1:</strong> <span id="file1-path">No file selected</span></p>
         <p><strong>File 2:</strong> <span id="file2-path">No file selected</span></p>
         <button id="select-files-btn" class="btn">Select Excel Files</button>
-        <button id="compare-btn" class="btn" disabled>Compare Files</button>
+        </div>
+        
+        <div class="comparison-options">
+          <h3>Comparison Options</h3>
+          <div class="option-group">
+            <label for="key-column">Key Column for Row Matching:</label>
+            <select id="key-column" disabled>
+              <option value="direct">Direct Comparison (Default)</option>
+              <!-- Columns will be added dynamically -->
+            </select>
+            <div class="tooltip">
+              <span class="tooltiptext">
+                Select a column to use as a key for matching rows between files. 
+                When selected, rows with the same key value will be compared, 
+                regardless of their position in the file.
+              </span>
+              <span class="help-icon">?</span>
+            </div>
+          </div>
+          <button id="compare-btn" class="btn" disabled>Compare Files</button>
         </div>
         
         <div id="loading" class="loading" style="display: none;">
