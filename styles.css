@@ -5,7 +5,7 @@ body {
 }
 
 .container {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
   background-color: white;
   padding: 20px;
@@ -43,6 +43,73 @@ h1 {
   padding: 10px;
   background-color: #f9f9f9;
   border-radius: 4px;
+}
+
+.comparison-options {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.option-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.option-group label {
+  flex: 0 0 200px;
+  margin-right: 10px;
+}
+
+.option-group select {
+  flex: 1;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  margin-left: 10px;
+}
+
+.help-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: #777;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 16px;
+  font-size: 12px;
+  cursor: help;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 250px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 8px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -125px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 14px;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
 }
 
 .results {
