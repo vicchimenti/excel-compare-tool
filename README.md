@@ -26,22 +26,26 @@ A desktop application that allows users to quickly and easily compare two Excel 
 ### Option 2: Build from Source
 
 1. Clone this repository:
+
    ```bash
    git clone https://github.com/vicchimenti/excel-compare-tool.git
    cd excel-compare-tool
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Run the application in development mode:
+
    ```bash
    npm start
    ```
 
 4. Build the application for your platform:
+
    ```bash
    # For Windows
    npm run build:win
