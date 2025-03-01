@@ -195,3 +195,37 @@ h1 {
   font-style: italic;
   margin-top: 10px;
 }
+
+/* Additional styles for the new cell display format */
+.cell-reference {
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 4px;
+  padding: 2px 4px;
+  background-color: #f0f0f0;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.cell-value {
+  padding: 3px 0;
+  word-break: break-word;
+}
+
+/* Make the table column widths better fit the new format */
+.diff-table th:nth-child(1), .diff-table td:nth-child(1) {
+  width: 15%;  /* Sheet column */
+}
+
+.diff-table th:nth-child(2), .diff-table td:nth-child(2) {
+  width: 15%;  /* Key Value column */
+}
+
+.diff-table th:nth-child(3), .diff-table td:nth-child(3) {
+  width: 20%;  /* Column name */
+}
+
+.diff-table th:nth-child(4), .diff-table td:nth-child(4),
+.diff-table th:nth-child(5), .diff-table td:nth-child(5) {
+  width: 25%;  /* File content columns */
+}
