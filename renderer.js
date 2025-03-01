@@ -1,5 +1,6 @@
 // Store the selected files
 let selectedFiles = [];
+let columns = [];
 
 // Add event listener for the file selection button
 document.getElementById('select-files-btn').addEventListener('click', async () => {
@@ -10,6 +11,9 @@ document.getElementById('select-files-btn').addEventListener('click', async () =
       document.getElementById('file1-path').textContent = selectedFiles[0];
       document.getElementById('file2-path').textContent = selectedFiles[1];
       document.getElementById('compare-btn').disabled = false;
+      
+      // Load columns from the first file
+      await loadColumns(selectedFiles[0]);
     } else {
       alert('Please select at least 2 Excel files to compare.');
     }
@@ -17,6 +21,38 @@ document.getElementById('select-files-btn').addEventListener('click', async () =
     alert('Error selecting files: ' + error);
   }
 });
+
+// Load columns from the first file
+async function loadColumns(filePath) {
+  try {
+    const result = await window.api.getColumns(filePath);
+    
+    if (result.success) {
+      columns = result.columns || [];
+      
+      // Populate the key column dropdown
+      const keyColumnSelect = document.getElementById('key-column');
+      keyColumnSelect.disabled = false;
+      
+      // Clear existing options except the first one
+      while(keyColumnSelect.options.length > 1) {
+        keyColumnSelect.remove(1);
+      }
+      
+      // Add column options
+      columns.forEach(column => {
+        const option = document.createElement('option');
+        option.value = column.index;
+        option.textContent = column.name;
+        keyColumnSelect.appendChild(option);
+      });
+    } else {
+      console.error('Error loading columns:', result.error);
+    }
+  } catch (error) {
+    console.error('Error loading columns:', error);
+  }
+}
 
 // Add event listener for the compare button
 document.getElementById('compare-btn').addEventListener('click', async () => {
@@ -29,7 +65,17 @@ document.getElementById('compare-btn').addEventListener('click', async () => {
   resultsEl.style.display = 'none';
   
   try {
-    const comparison = await window.api.compareFiles(selectedFiles[0], selectedFiles[1]);
+    // Get the selected key column
+    const keyColumnSelect = document.getElementById('key-column');
+    const selectedValue = keyColumnSelect.value;
+    
+    const options = {};
+    if (selectedValue !== 'direct') {
+      // Convert to number since column indexes are numeric
+      options.keyColumn = parseInt(selectedValue, 10);
+    }
+    
+    const comparison = await window.api.compareFiles(selectedFiles[0], selectedFiles[1], options);
     
     loadingEl.style.display = 'none';
     
@@ -76,7 +122,7 @@ function displayResults(results) {
   // Create header row
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  const headers = ['Sheet', 'Cell', 'File 1 Value', 'File 2 Value'];
+  const headers = ['Sheet', 'Key Value', 'Column', 'Cell (File 1)', 'Cell (File 2)', 'File 1 Value', 'File 2 Value'];
   
   headers.forEach((headerText, index) => {
     const header = document.createElement('th');
@@ -138,8 +184,17 @@ function displayResults(results) {
     const sheetCell = document.createElement('td');
     sheetCell.textContent = diff.sheet;
     
-    const cellIdCell = document.createElement('td');
-    cellIdCell.textContent = diff.cell;
+    const keyValueCell = document.createElement('td');
+    keyValueCell.textContent = diff.keyValue;
+    
+    const columnCell = document.createElement('td');
+    columnCell.textContent = diff.column;
+    
+    const cell1Cell = document.createElement('td');
+    cell1Cell.textContent = diff.cell1;
+    
+    const cell2Cell = document.createElement('td');
+    cell2Cell.textContent = diff.cell2;
     
     const value1Cell = document.createElement('td');
     value1Cell.textContent = diff.value1;
@@ -159,7 +214,10 @@ function displayResults(results) {
     });
     
     row.appendChild(sheetCell);
-    row.appendChild(cellIdCell);
+    row.appendChild(keyValueCell);
+    row.appendChild(columnCell);
+    row.appendChild(cell1Cell);
+    row.appendChild(cell2Cell);
     row.appendChild(value1Cell);
     row.appendChild(value2Cell);
     
