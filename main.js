@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const XLSX = require('xlsx');
 
 // Import the comparison logic - adjust the path if needed
 let compareExcel;
@@ -23,8 +24,8 @@ let mainWindow;
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 900,
+    height: 700,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -98,11 +99,53 @@ ipcMain.handle('select-files', async () => {
   return result.filePaths;
 });
 
-// Handle comparison
-ipcMain.handle('compare-files', async (event, file1Path, file2Path) => {
+// Add new function to get columns from Excel file
+ipcMain.handle('get-columns', async (event, filePath) => {
   try {
-    console.log('Comparing files:', file1Path, file2Path);
-    const results = await compareExcel(file1Path, file2Path);
+    if (!filePath || !fs.existsSync(filePath)) {
+      throw new Error('Invalid file path');
+    }
+    
+    console.log('Loading columns from:', filePath);
+    
+    // Read the Excel file directly
+    const workbook = XLSX.readFile(filePath);
+    
+    // Get the first sheet
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    
+    // Convert to JSON to get headers (first row)
+    const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+    const columns = [];
+    
+    // Check if we have data and headers
+    if (data && data.length > 0 && data[0]) {
+      // First row contains headers
+      const headers = data[0];
+      
+      // Convert to column objects
+      headers.forEach((header, index) => {
+        columns.push({
+          name: header || `Column ${XLSX.utils.encode_col(index)}`,
+          index: index
+        });
+      });
+      
+      console.log('Found columns:', columns);
+    }
+    
+    return { success: true, columns: columns };
+  } catch (error) {
+    console.error('Error getting columns:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Update comparison handler to accept options
+ipcMain.handle('compare-files', async (event, file1Path, file2Path, options) => {
+  try {
+    console.log('Comparing files with options:', file1Path, file2Path, options);
+    const results = await compareExcel(file1Path, file2Path, options);
     return { success: true, results };
   } catch (error) {
     console.error('Comparison error:', error);
