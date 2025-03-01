@@ -4,35 +4,36 @@
     "description": "A tool to compare Excel files",
     "main": "main.js",
     "scripts": {
-      "start": "electron .",
-      "build": "electron-builder",
-      "build:win": "electron-builder --win"
+        "start": "electron .",
+        "build": "electron-builder",
+        "build:win": "electron-builder --win"
     },
     "build": {
-      "appId": "com.excel.compare",
-      "productName": "Excel Compare Tool",
-      "directories": {
-        "output": "dist"
-      },
-      "win": {
-        "target": [
-          "nsis"
-        ],
-        "icon": "icon.ico"
-      },
-      "nsis": {
-        "oneClick": false,
-        "allowToChangeInstallationDirectory": true,
-        "shortcutName": "Excel Compare Tool"
-      }
+        "appId": "com.excel.compare",
+        "productName": "Excel Compare Tool",
+        "directories": {
+            "output": "dist"
+        },
+        "win": {
+            "target": [
+                "nsis"
+            ],
+            "icon": "icon.ico"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "shortcutName": "Excel Compare Tool"
+        }
     },
     "author": "Victor Chimenti",
     "license": "MIT",
     "devDependencies": {
-      "electron": "^29.0.0",
-      "electron-builder": "^24.9.1"
+        "electron": "^29.0.0",
+        "electron-builder": "^24.9.1"
     },
     "dependencies": {
-      "xlsx": "^0.18.5"
+        "commander": "^13.1.0",
+        "xlsx": "^0.18.5"
     }
-  }
+}
